@@ -58,7 +58,7 @@ def load_model():
         with st.spinner("📥 Downloading model from GitHub (first time only, ~50MB)..."):
             try:
                 # REPLACE WITH YOUR ACTUAL GITHUB RELEASE URL
-                url = "https://github.com/rim373/Helipad-Detection-with-Deep-Learning/releases/tag/v1.0/best_helipad_model.pth"
+                url = "https://github.com/rim373/Helipad-Detection-with-Deep-Learning/releases/download/v1.0/best_helipad_model.pth"
                 
                 response = requests.get(url, stream=True)
                 response.raise_for_status()  # Raise error for bad status
