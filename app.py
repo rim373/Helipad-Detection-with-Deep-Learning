@@ -4,6 +4,8 @@ import torch.nn as nn
 from torchvision import transforms, models
 from PIL import Image
 import numpy as np
+import requests
+import os
 
 # Page configuration
 st.set_page_config(
@@ -43,14 +45,50 @@ class HelipadClassifier(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# Load model (cached for performance)
+# Load model from GitHub Releases
 @st.cache_resource
 def load_model():
     device = torch.device('cpu')
     model = HelipadClassifier()
     
+    model_path = 'best_helipad_model.pth'
+    
+    # Download from GitHub Releases if not exists
+    if not os.path.exists(model_path):
+        with st.spinner("📥 Downloading model from GitHub (first time only, ~50MB)..."):
+            try:
+                # REPLACE WITH YOUR ACTUAL GITHUB RELEASE URL
+                url = "https://github.com/YOUR_USERNAME/helipad-detector/releases/download/v1.0/best_helipad_model.pth"
+                
+                response = requests.get(url, stream=True)
+                response.raise_for_status()  # Raise error for bad status
+                
+                total_size = int(response.headers.get('content-length', 0))
+                
+                # Download with progress
+                with open(model_path, 'wb') as f:
+                    if total_size == 0:
+                        f.write(response.content)
+                    else:
+                        downloaded = 0
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                                downloaded += len(chunk)
+                
+                st.success("✅ Model downloaded successfully!")
+                
+            except requests.exceptions.RequestException as e:
+                st.error(f"❌ Download failed: {e}")
+                st.info("Please check:\n1. The release URL is correct\n2. The file exists in GitHub releases\n3. The release is public")
+                return None, None
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                return None, None
+    
+    # Load the model
     try:
-        model.load_state_dict(torch.load('best_helipad_model.pth', map_location=device))
+        model.load_state_dict(torch.load(model_path, map_location=device))
         model.eval()
         st.success("✅ Model loaded successfully!")
         return model, device
@@ -214,6 +252,5 @@ if model is not None:
         """)
 
 else:
-    st.error("⚠️ Could not load the model. Please ensure 'best_helipad_model.pth' is in the same directory.")
-
+    st.error("⚠️ Could not load the model. Please check the error messages above.")
 
