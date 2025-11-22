@@ -45,8 +45,7 @@ class HelipadClassifier(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# Load model from GitHub Releases
-# Load model from GitHub Releases
+# Load model from GitHub Releases with proper headers
 @st.cache_resource
 def load_model():
     device = torch.device('cpu')
@@ -56,81 +55,57 @@ def load_model():
     
     # Download from GitHub Releases if not exists
     if not os.path.exists(model_path):
-        with st.spinner("📥 Downloading model from GitHub (first time only, ~17MB)..."):
+        with st.spinner("📥 Downloading model from GitHub (~17MB)..."):
             try:
                 url = "https://github.com/rim373/Helipad-Detection-with-Deep-Learning/releases/download/v1.0/best_helipad_model.pth"
                 
-                st.info(f"Downloading from: {url}")
+                # Add proper headers
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'application/octet-stream'
+                }
                 
-                response = requests.get(url, stream=True, allow_redirects=True)
+                response = requests.get(url, headers=headers, stream=True, allow_redirects=True, timeout=120)
                 
-                # Debug: Check what we're getting
-                content_type = response.headers.get('content-type', '')
-                content_length = response.headers.get('content-length', '0')
-                
-                st.info(f"Response status: {response.status_code}")
-                st.info(f"Content-Type: {content_type}")
-                st.info(f"Content-Length: {content_length} bytes")
-                
-                # Check if we got HTML instead of binary
-                if 'text/html' in content_type:
-                    st.error("❌ Got HTML page instead of model file!")
-                    st.error("This usually means the file URL is incorrect or the release is not public.")
+                if response.status_code != 200:
+                    st.error(f"❌ HTTP {response.status_code}: Download failed")
                     return None, None
                 
-                response.raise_for_status()
+                # Check content type
+                content_type = response.headers.get('content-type', '').lower()
+                if 'text/html' in content_type:
+                    st.error("❌ Got HTML page instead of file")
+                    return None, None
                 
-                # Download the file
+                # Download file
                 with open(model_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
                 
-                # Check file size
+                # Verify file size (should be ~17 MB)
                 file_size = os.path.getsize(model_path)
-                st.success(f"✅ Model downloaded successfully! ({file_size / 1024 / 1024:.1f} MB)")
+                if file_size < 1000000:  # Less than 1 MB
+                    st.error(f"❌ File too small: {file_size} bytes")
+                    os.remove(model_path)
+                    return None, None
                 
-            except requests.exceptions.RequestException as e:
-                st.error(f"❌ Download failed: {e}")
-                return None, None
+                st.success(f"✅ Downloaded {file_size / 1024 / 1024:.1f} MB")
+                
             except Exception as e:
-                st.error(f"❌ Error: {e}")
+                st.error(f"❌ Download failed: {e}")
                 return None, None
     
     # Load the model
     try:
-        # Check if file exists and is not empty
-        if os.path.exists(model_path):
-            file_size = os.path.getsize(model_path)
-            st.info(f"Loading model file ({file_size / 1024 / 1024:.1f} MB)...")
-            
-            # Check if file looks like HTML (starts with <!DOCTYPE or <html)
-            with open(model_path, 'rb') as f:
-                first_bytes = f.read(100)
-                if b'<!DOCTYPE' in first_bytes or b'<html' in first_bytes:
-                    st.error("❌ Model file is actually an HTML page!")
-                    st.error("Deleting corrupted file...")
-                    os.remove(model_path)
-                    st.error("Please refresh the page to try downloading again.")
-                    return None, None
-        
         model.load_state_dict(torch.load(model_path, map_location=device, weights_only=False))
         model.eval()
         st.success("✅ Model loaded successfully!")
         return model, device
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
-        
-        # If error, try to show first few bytes of the file for debugging
-        if os.path.exists(model_path):
-            try:
-                with open(model_path, 'rb') as f:
-                    first_100 = f.read(100)
-                    st.error(f"First 100 bytes of file: {first_100[:100]}")
-            except:
-                pass
-        
         return None, None
+
 # Image preprocessing
 def preprocess_image(image):
     transform = transforms.Compose([
