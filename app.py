@@ -88,7 +88,7 @@ def load_model():
     
     # Load the model
     try:
-        model.load_state_dict(torch.load(model_path, map_location=device))
+        model.load_state_dict(torch.load(model_path, map_location=device, weights_only=False))
         model.eval()
         st.success("✅ Model loaded successfully!")
         return model, device
