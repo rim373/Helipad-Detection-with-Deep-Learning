@@ -13,7 +13,7 @@ An AI-powered web application that automatically detects helipads in aerial and 
 
 ## 🚀 Live Demo
 
-**Try it now:** [**🚁 Helipad Detection App**](https://helipad-detector.streamlit.app)
+**Try it now:** [**🚁 Helipad Detection App**](https://helipad-detection.streamlit.app)
 
 Upload an aerial image and get instant helipad detection with confidence scores!
 
